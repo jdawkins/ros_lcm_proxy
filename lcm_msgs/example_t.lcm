@@ -1,0 +1,10 @@
+package lcm_navmsgs;
+
+struct vehicle_state
+{
+    int64_t  timestamp;
+    string   name;
+    double   position[3];
+    double   orientation[4];
+    double   velocity[3]; 
+}
