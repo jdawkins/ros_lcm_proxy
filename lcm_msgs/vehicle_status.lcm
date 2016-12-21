@@ -1,0 +1,13 @@
+package lcm_navmsgs;
+
+struct vehicle_status
+{
+
+    boolean armed;
+    int8_t ctrl_mode;
+    int8_t nav_state;
+    int8_t nav_goal;
+    int8_t nav_solution;
+    double battery_voltage;
+
+}

@@ -4,12 +4,16 @@
 
 #include <lcm/lcm-cpp.hpp>
 #include "lcm_navmsgs/vehicle_state.hpp"
+#include "lcm_navmsgs/vehicle_status.hpp"
 #include "exlcm/example_t.hpp"
+#include "emaxx_ctrl_msgs/emaxx_status.h"
 
 
 lcm_navmsgs::vehicle_state my_state;
+lcm_navmsgs::vehicle_status my_status;
 int veh_id;
 std::string ugv_name;
+lcm::LCM* lcm;
 
 
 void poseCallBack(const geometry_msgs::PoseStamped pose_msg){
@@ -39,6 +43,20 @@ void velCallBack(const geometry_msgs::Twist vel_msg){
  // ROS_ERROR("Vel CallBack");
   
 }
+void statusCallback(const emaxx_ctrl_msgs::emaxx_status stat_msg){
+  my_status.armed = stat_msg.armed;
+  my_status.battery_voltage = stat_msg.battery_voltage;
+  my_status.ctrl_mode = stat_msg.ctrl_mode;
+  my_status.nav_goal = stat_msg.nav_goal;
+  my_status.nav_state = stat_msg.nav_state;
+  my_status.nav_solution = stat_msg.nav_solution;
+  
+}
+void oneHertzCallBack(const ros::TimerEvent& event){
+
+   lcm->publish("curr_status", &my_status);
+  
+}
 
 int main(int argc, char **argv)
 {
@@ -47,9 +65,9 @@ int main(int argc, char **argv)
 
     ros::NodeHandle nh;
     
-    lcm::LCM lcm;
+    lcm = new lcm::LCM();
 
-    if(!lcm.good())
+    if(!lcm->good())
         return 1;
      
     
@@ -59,17 +77,20 @@ int main(int argc, char **argv)
     std::cout << ugv_name <<std::endl;
     ros::Subscriber pose_sub = nh.subscribe("/"+ugv_name+"/pose_ned",100,poseCallBack);
     ros::Subscriber vel_sub = nh.subscribe("/"+ugv_name+"/vel_ned",100,velCallBack);
+    ros::Subscriber status_sub = nh.subscribe("/"+ugv_name+"/status",10,statusCallback);
+    
+    ros::Timer timer = nh.createTimer(ros::Duration(1),oneHertzCallBack);
         
     my_state.id = veh_id;
     my_state.name = ugv_name.c_str();
    
       
     ros::Rate loop_rate(20);
-    while(ros::ok() && lcm.good()){
+    while(ros::ok() && lcm->good()){
       ros::Time curr_time = ros::Time::now();
 	my_state.timestamp = curr_time.toNSec();
 		
-        lcm.publish("vehicle_states", &my_state);      
+        lcm->publish("vehicle_states", &my_state);      
 
 
         ros::spinOnce();// Allow ROS to check for new ROS Messages

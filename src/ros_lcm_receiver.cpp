@@ -9,12 +9,16 @@
 #include <geometry_msgs/Transform.h>
 #include <geometry_msgs/Twist.h>
 #include <std_msgs/UInt8MultiArray.h>
+#include <emaxx_ctrl_msgs/emaxx_status.h>
+#include <emaxx_ctrl_msgs/team_state.h>
 
-sensor_msgs::MultiDOFJointState team_states;
+emaxx_ctrl_msgs::team_state team_states;
 std::vector<int> team_ids;
 std_msgs::UInt8MultiArray registered_team;
 ros::Publisher reg_pub;
 ros::Publisher team_state_pub;
+emaxx_ctrl_msgs::emaxx_status set_emaxx_state;
+
 
 void oneHertzCallBack(const ros::TimerEvent& event){
 
@@ -33,16 +37,16 @@ class Handler
         {
 	   if(!strcmp(chan.c_str(),"vehicle_states")){	   	     
 	     
-	   geometry_msgs::Transform curr_pose;
+	   geometry_msgs::Pose curr_pose;
 	   
-	   curr_pose.translation.x = msg->position[0];
-	   curr_pose.translation.y = msg->position[1];
-	   curr_pose.translation.z = msg->position[2];
+	   curr_pose.position.x = msg->position[0];
+	   curr_pose.position.y = msg->position[1];
+	   curr_pose.position.z = msg->position[2];
 	   
-	   curr_pose.rotation.w = msg->orientation[0];
-	   curr_pose.rotation.x = msg->orientation[1];
-	   curr_pose.rotation.y = msg->orientation[2];
-	   curr_pose.rotation.z = msg->orientation[3];
+	   curr_pose.orientation.w = msg->orientation[0];
+	   curr_pose.orientation.x = msg->orientation[1];
+	   curr_pose.orientation.y = msg->orientation[2];
+	   curr_pose.orientation.z = msg->orientation[3];
 	   
 	   geometry_msgs::Twist curr_vel;
 	   curr_vel.linear.x = msg->velocity[0];
@@ -54,29 +58,26 @@ class Handler
 	  // bool exists = (indx != team_ids.end());
 	    
 	   if(it != team_ids.end()){
-	     	     
+	     //if team id is in the list already update it
 	    // team_states.transforms[*it] = curr_pose;
 	    // std::cout << *it <<std::endl;
 	     int n = it-team_ids.begin();
 	     std::cout << "Element Found At:" << it-team_ids.begin() << std::endl;
-	     team_states.transforms[n] = curr_pose;
-	     team_states.joint_names[n] = msg->name;
-	     team_states.twist[n] = curr_vel;
-	     
+	     team_states.poses[n] = curr_pose;
+	     team_states.velocities[n] = curr_vel;
+	     team_states.length = team_ids.size();
 	     team_state_pub.publish(team_states);
 	     
 	   }
 	   else{
 	     //Add new agent data to list of team members
 	     team_ids.push_back(msg->id);
-	     team_states.transforms.push_back(curr_pose);
-	     team_states.joint_names.push_back(msg->name);
-	     team_states.twist.push_back(curr_vel);
+	     team_states.poses.push_back(curr_pose);
+	     team_states.velocities.push_back(curr_vel);
+	     team_state_pub.publish(team_states);	     
 	     registered_team.data.push_back(msg->id);
 	   }
-	   
-  
-	    
+	     	    
 	  }
 	    
 
@@ -99,7 +100,8 @@ int main(int argc, char **argv)
      
     ros::Timer timer = nh.createTimer(ros::Duration(1),oneHertzCallBack);
     reg_pub = nh.advertise<std_msgs::UInt8MultiArray>("reg_team", 20);
-    team_state_pub = nh.advertise<sensor_msgs::MultiDOFJointState>("team_states",100);
+    team_state_pub = nh.advertise<emaxx_ctrl_msgs::team_state>("team_states",100);
+    
     
     ros::Rate loop_rate(200);
 
